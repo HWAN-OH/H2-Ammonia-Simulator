@@ -1,43 +1,40 @@
-# app.py
 import streamlit as st
 import pandas as pd
-import calculator # 수정된 calculator 모듈
-import reporter
+import calculator
 
-# --- 페이지 기본 설정 ---
+# --- Page Configuration ---
 st.set_page_config(
     page_title="Green Ammonia LCOA Simulator",
     page_icon="💡",
     layout="wide"
 )
 
-# --- 사이드바: 사용자 입력 ---
+# --- Sidebar: User Inputs ---
 st.sidebar.header("Simulation Parameters")
 
-# 재무 가정
+# Financial Assumptions
 st.sidebar.subheader("Financial Assumptions")
 discount_rate = st.sidebar.slider("Discount Rate (%)", 1.0, 15.0, 8.0, 0.1) / 100
 plant_lifetime = st.sidebar.slider("Plant Lifetime (years)", 10, 40, 25, 1)
 inflation_rate = st.sidebar.slider("Inflation Rate (%)", 0.0, 5.0, 2.0, 0.1) / 100
 
-# 플랜트 사양
+# Plant Specifications
 st.sidebar.subheader("Plant Specifications")
 plant_capacity_mw = st.sidebar.number_input("Plant Capacity (MW)", min_value=100, max_value=5000, value=1000, step=100)
 capacity_factor = st.sidebar.slider("Capacity Factor (%)", 50.0, 100.0, 90.0, 0.5) / 100
 electricity_cost = st.sidebar.number_input("Electricity Cost ($/kWh)", min_value=0.01, max_value=0.20, value=0.05, step=0.01, format="%.3f")
 
-# 운송
+# Transportation
 st.sidebar.subheader("Transportation")
 transport_distance_km = st.sidebar.number_input("Transport Distance (km)", min_value=0, max_value=10000, value=1000, step=100)
 
-# --- 메인 페이지 ---
+# --- Main Page ---
 st.title("💡 Green Ammonia LCOA Simulator")
 st.markdown("This tool calculates the Levelized Cost of Ammonia (LCOA) based on your input parameters.")
 
-# 시뮬레이션 실행 버튼
+# Run Simulation Button
 if st.button("Run Simulation"):
-    # 사용자 입력을 기반으로 config 딕셔너리 생성
-    # (calculator 함수들이 이 딕셔너리를 인자로 받음)
+    # Create a config dictionary from user inputs
     user_config = {
         'PLANT_CAPACITY_KW': plant_capacity_mw * 1000,
         'CAPACITY_FACTOR': capacity_factor,
@@ -61,40 +58,44 @@ if st.button("Run Simulation"):
     }
 
     with st.spinner('Calculating LCOA...'):
-        # 1. 연간 생산량 계산
+        # 1. Calculate annual production
         annual_h2_kg, annual_nh3_tonne = calculator.calculate_annual_production(user_config)
 
-        # 2. CAPEX 계산
+        # 2. Calculate CAPEX
         capex_costs = calculator.calculate_capital_costs(user_config, annual_nh3_tonne)
 
-        # 3. OPEX 계산
+        # 3. Calculate OPEX
         opex_costs = calculator.calculate_annual_operating_costs(user_config, capex_costs)
 
-        # 4. LCOA 계산
+        # 4. Calculate LCOA
         lcoa_results = calculator.calculate_lcoa(user_config, capex_costs['total_capex_with_replacement'], opex_costs['total_annual_opex'], annual_nh3_tonne)
 
     st.success("Calculation Complete!")
 
-    # --- 결과 표시 ---
+    # --- Display Results ---
     st.header("Simulation Results")
 
-    # 최종 LCOA 메트릭
+    # Final LCOA Metrics
     col1, col2, col3 = st.columns(3)
     col1.metric("Final LCOA", f"${lcoa_results['lcoa_final']:.2f}", "/tonne")
     col2.metric("Production Cost", f"${lcoa_results['lcoa_production']:.2f}", "/tonne")
     col3.metric("Transport Cost", f"${lcoa_results['transport_cost_per_tonne']:.2f}", "/tonne")
 
-    # 비용 구성 바 차트
+    # Cost Breakdown Bar Chart
     st.subheader("Cost Breakdown ($/tonne)")
-    cost_breakdown_data = {
-        'Annualized CAPEX': lcoa_results['annualized_capex'] / annual_nh3_tonne,
-        'Annual OPEX': opex_costs['total_annual_opex'] / annual_nh3_tonne,
-        'Transport Cost': lcoa_results['transport_cost_per_tonne']
-    }
-    cost_df = pd.DataFrame.from_dict(cost_breakdown_data, orient='index', columns=['Cost per Tonne'])
-    st.bar_chart(cost_df)
+    # Avoid division by zero for the chart
+    if annual_nh3_tonne > 0:
+        cost_breakdown_data = {
+            'Annualized CAPEX': lcoa_results['annualized_capex'] / annual_nh3_tonne,
+            'Annual OPEX': opex_costs['total_annual_opex'] / annual_nh3_tonne,
+            'Transport Cost': lcoa_results['transport_cost_per_tonne']
+        }
+        cost_df = pd.DataFrame.from_dict(cost_breakdown_data, orient='index', columns=['Cost per Tonne'])
+        st.bar_chart(cost_df)
+    else:
+        st.warning("Annual production is zero. Cannot display cost breakdown.")
 
-    # 상세 결과 expander
+    # Expander for Detailed Results
     with st.expander("Show Detailed Results"):
         st.subheader("Production")
         st.text(f"Annual Ammonia Production: {annual_nh3_tonne:,.2f} tonnes")
@@ -108,7 +109,7 @@ if st.button("Run Simulation"):
         st.subheader("Levelized Cost Analysis")
         st.dataframe(pd.DataFrame([lcoa_results]))
 
-        # 다운로드용 전체 결과 취합
+        # Consolidate results for download
         final_results = {
             "Plant Capacity (MW)": plant_capacity_mw,
             "Capacity Factor (%)": capacity_factor * 100,
