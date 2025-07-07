@@ -12,9 +12,9 @@ st.set_page_config(
 
 # --- Sidebar ---
 with st.sidebar:
-    # You can replace this URL with your actual logo image
-    st.image("https://raw.githubusercontent.com/HWAN-OH/MirrorMind-Identity-Protocol/main/logo.png", width=100)
-    st.title("🌿 Simulation Parameters")
+    # Using a standard SVG icon as a placeholder logo
+    st.image("https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/leaf.svg", width=80)
+    st.title("Simulation Parameters")
     st.markdown("---")
 
     # Financial Assumptions
@@ -104,6 +104,10 @@ if st.button("🚀 Run Simulation", use_container_width=True):
 
     with tab2:
         st.header("Detailed Cost Breakdown")
+        # --- NEWLY ADDED ---
+        st.info(f"**Annual Ammonia Production:** {annual_nh3_tonne:,.2f} tonnes/year", icon="📦")
+        # --- END OF ADDITION ---
+        
         st.subheader("Capital Expenditures (CAPEX)")
         capex_df = pd.DataFrame.from_dict(capex_costs, orient='index', columns=['Cost ($)'])
         st.dataframe(capex_df, use_container_width=True)
@@ -123,11 +127,15 @@ if st.button("🚀 Run Simulation", use_container_width=True):
             temp_config = user_config.copy()
             temp_config['ELECTRICITY_COST'] = cost
             
-            _, temp_nh3_tonne = calculator.calculate_annual_production(temp_config)
-            temp_capex = calculator.calculate_capital_costs(temp_config, temp_nh3_tonne)
-            temp_opex = calculator.calculate_annual_operating_costs(temp_config, temp_capex)
-            temp_lcoa = calculator.calculate_lcoa(temp_config, temp_capex['total_capex_with_replacement'], temp_opex['total_annual_opex'], temp_nh3_tonne)
-            lcoa_values.append(temp_lcoa['lcoa_final'])
+            _, temp_nh3_tonne_sens = calculator.calculate_annual_production(temp_config)
+            if temp_nh3_tonne_sens > 0:
+                temp_capex = calculator.calculate_capital_costs(temp_config, temp_nh3_tonne_sens)
+                temp_opex = calculator.calculate_annual_operating_costs(temp_config, temp_capex)
+                temp_lcoa = calculator.calculate_lcoa(temp_config, temp_capex['total_capex_with_replacement'], temp_opex['total_annual_opex'], temp_nh3_tonne_sens)
+                lcoa_values.append(temp_lcoa['lcoa_final'])
+            else:
+                lcoa_values.append(0)
+
 
         sensitivity_df = pd.DataFrame({
             'Electricity Cost ($/kWh)': sensitivity_range,
@@ -136,4 +144,3 @@ if st.button("🚀 Run Simulation", use_container_width=True):
         
         st.line_chart(sensitivity_df.rename(columns={'Electricity Cost ($/kWh)':'index'}).set_index('index'))
         st.dataframe(sensitivity_df, use_container_width=True)
-
