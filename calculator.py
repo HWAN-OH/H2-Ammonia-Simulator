@@ -35,7 +35,8 @@ def calculate_electrolyzer_utilization(total_kwh_needed, electrolyzer_capacity_k
     if electrolyzer_capacity_kw == 0: return 0
     return total_kwh_needed / (electrolyzer_capacity_kw * 365 * 24)
 
-def calculate_capital_costs(base_config, target_ammonia_tonne, strategy, ess_config={}, solar_wind_ratio=0.5):
+# --- FIX: Added 'total_kwh_needed' as an argument ---
+def calculate_capital_costs(base_config, target_ammonia_tonne, total_kwh_needed, strategy, ess_config={}, solar_wind_ratio=0.5):
     """Calculates total CAPEX based on the selected energy strategy."""
     electrolyzer_capex = base_config['ELECTROLYZER_CAPACITY_KW'] * ELECTROLYZER_CAPEX_PER_KW
     solar_capex = base_config['SOLAR_CAPACITY_KW'] * SOLAR_CAPEX_PER_KW
@@ -55,13 +56,11 @@ def calculate_capital_costs(base_config, target_ammonia_tonne, strategy, ess_con
     }
 
     if strategy == 'ESS Balancing':
-        # --- DYNAMIC ESS CALCULATION LOGIC ---
-        # Define storage duration based on solar ratio (100% solar -> 14h, 100% wind -> 6h)
         max_storage_hours = 14
         min_storage_hours = 6
         storage_duration_hours = (max_storage_hours - min_storage_hours) * solar_wind_ratio + min_storage_hours
         
-        # Calculate required ESS capacity based on AVERAGE power consumption
+        # Now this calculation will work correctly
         avg_power_consumption_kw = total_kwh_needed / (365 * 24)
         ess_capacity_kwh = avg_power_consumption_kw * storage_duration_hours
         
@@ -71,7 +70,6 @@ def calculate_capital_costs(base_config, target_ammonia_tonne, strategy, ess_con
         capex_breakdown['ess_capex'] = ess_capex
         capex_breakdown['ess_capacity_mwh'] = ess_capacity_kwh / 1000
         capex_breakdown['calculated_storage_duration_hours'] = storage_duration_hours
-        # --- END OF DYNAMIC LOGIC ---
 
     capex_breakdown['total_capex'] = total_capex
     return capex_breakdown
@@ -87,7 +85,6 @@ def calculate_annual_operating_costs(base_config, capex_costs, total_kwh_needed,
     variable_opex = 0
 
     if strategy == 'Grid Balancing':
-        # Assume 30% of total energy is purchased from the grid due to intermittency
         grid_power_kwh = total_kwh_needed * 0.30
         variable_opex = grid_power_kwh * grid_config['purchase_price']
     else: # ESS Balancing
