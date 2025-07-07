@@ -51,9 +51,7 @@ with st.sidebar:
     plant_lifetime = st.slider("Plant Lifetime (years)", 10, 40, 25, 1)
 
     st.markdown("---")
-    # --- FIX: Updated copyright year to 2025 ---
     st.info("© 2025, HWAN-OH. All rights reserved.")
-    # --- END OF FIX ---
 
 # --- Main Page ---
 st.title("🔗 Ammonia Value Chain Analyzer")
@@ -87,9 +85,11 @@ if st.button("🚀 Run Analysis", use_container_width=True):
     }
 
     with st.spinner(f'Analyzing economics for **{energy_strategy}** scenario...'):
+        # --- FIX: Pass 'total_kwh_needed' to the function ---
         capex_costs = calculator.calculate_capital_costs(
             base_config, 
-            target_ammonia_tonne, 
+            target_ammonia_tonne,
+            total_kwh_needed, # This argument is now correctly passed
             energy_strategy, 
             ess_config, 
             solar_wind_ratio / 100
