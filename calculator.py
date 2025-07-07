@@ -7,7 +7,7 @@
         "colab_type": "text"
       },
       "source": [
-        "<a href=\"https://colab.research.google.com/github/HWAN-OH/H2-Ammonia-Simulator/blob/main/calculator_py\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+        "<a href=\"https://colab.research.google.com/github/HWAN-OH/H2-Ammonia-Simulator/blob/main/calculator.py\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
       ]
     },
     {
@@ -18,6 +18,10 @@
         "\n",
         "def calculate_annual_production(config):\n",
         "    \"\"\"연간 수소 및 암모니아 생산량을 계산합니다.\"\"\"\n",
+        "    # 0으로 나누기 방지\n",
+        "    if config['H2_LHV'] == 0 or config['ELECTROLYZER_EFFICIENCY'] == 0:\n",
+        "        return 0, 0\n",
+        "\n",
         "    h2_production_per_hour = (config['PLANT_CAPACITY_KW'] * config['CAPACITY_FACTOR']) / (config['H2_LHV'] / config['ELECTROLYZER_EFFICIENCY'])\n",
         "    annual_h2_production_kg = h2_production_per_hour * 24 * 365\n",
         "    annual_nh3_production_kg = annual_h2_production_kg * 5.617\n",
@@ -34,8 +38,12 @@
         "\n",
         "    total_capex = electrolyzer_capex + asu_capex + hb_capex + storage_capex\n",
         "\n",
-        "    replacement_cost = electrolyzer_capex * ((1 + config['INFLATION_RATE']) ** config['ELECTROLYZER_LIFETIME'])\n",
-        "    replacement_present_value = replacement_cost / ((1 + config['DISCOUNT_RATE']) ** config['ELECTROLYZER_LIFETIME'])\n",
+        "    # 0으로 나누기 방지\n",
+        "    if (1 + config['DISCOUNT_RATE']) == 0:\n",
+        "        replacement_present_value = 0\n",
+        "    else:\n",
+        "        replacement_cost = electrolyzer_capex * ((1 + config['INFLATION_RATE']) ** config['ELECTROLYZER_LIFETIME'])\n",
+        "        replacement_present_value = replacement_cost / ((1 + config['DISCOUNT_RATE']) ** config['ELECTROLYZER_LIFETIME'])\n",
         "\n",
         "    total_capex_with_replacement = total_capex + replacement_present_value\n",
         "\n",
@@ -69,12 +77,20 @@
         "\n",
         "def calculate_lcoa(config, total_capex, total_annual_opex, annual_nh3_production_tonne):\n",
         "    \"\"\"LCOA (Levelized Cost of Ammonia)를 계산합니다.\"\"\"\n",
-        "    crf = (config['DISCOUNT_RATE'] * (1 + config['DISCOUNT_RATE']) ** config['PLANT_LIFETIME']) / \\\n",
-        "          ((1 + config['DISCOUNT_RATE']) ** config['PLANT_LIFETIME'] - 1)\n",
+        "    # 분모 0 방지\n",
+        "    denominator = ((1 + config['DISCOUNT_RATE']) ** config['PLANT_LIFETIME'] - 1)\n",
+        "    if denominator == 0:\n",
+        "        crf = 0\n",
+        "    else:\n",
+        "        crf = (config['DISCOUNT_RATE'] * (1 + config['DISCOUNT_RATE']) ** config['PLANT_LIFETIME']) / denominator\n",
         "\n",
         "    annualized_capex = total_capex * crf\n",
         "    total_annual_cost = annualized_capex + total_annual_opex\n",
-        "    lcoa_production = total_annual_cost / annual_nh3_production_tonne\n",
+        "\n",
+        "    if annual_nh3_production_tonne == 0:\n",
+        "        lcoa_production = 0\n",
+        "    else:\n",
+        "        lcoa_production = total_annual_cost / annual_nh3_production_tonne\n",
         "\n",
         "    transport_cost_per_tonne = config['TRANSPORT_DISTANCE_KM'] * config['TRANSPORT_COST_PER_TON_KM']\n",
         "    lcoa_final = lcoa_production + transport_cost_per_tonne\n",
@@ -90,7 +106,7 @@
       "outputs": [],
       "execution_count": null,
       "metadata": {
-        "id": "ZKj_GW6w57Yk"
+        "id": "IR8HwgwX9IJ_"
       }
     }
   ],
