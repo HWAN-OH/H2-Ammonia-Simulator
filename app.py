@@ -27,10 +27,7 @@ with st.sidebar:
     energy_strategy = st.radio(
         "Select Strategy",
         ("Grid Balancing", "ESS Balancing"),
-        captions=[
-            "Supplement with grid power when renewables are insufficient.",
-            "Store surplus renewable energy in ESS for 100% clean, off-grid operation."
-        ]
+        help="Choose 'Grid Balancing' to use grid power or 'ESS Balancing' for a 100% clean, off-grid system."
     )
     
     grid_config = {}
@@ -54,14 +51,24 @@ with st.sidebar:
     plant_lifetime = st.slider("Plant Lifetime (years)", 10, 40, 25, 1)
 
     st.markdown("---")
-    st.info("© 2024, HWAN-OH. All rights reserved.")
+    # --- FIX: Updated copyright year to 2025 ---
+    st.info("© 2025, HWAN-OH. All rights reserved.")
+    # --- END OF FIX ---
 
 # --- Main Page ---
 st.title("🔗 Ammonia Value Chain Analyzer")
 st.markdown("Define a **production target** and **energy strategy** to analyze the LCOA and required infrastructure.")
 st.markdown("---")
 
-# ... (Project Vision Expander remains the same)
+with st.expander("View Project Vision & Info"):
+    st.markdown("""
+    #### **The Project's Essence**
+    The core vision of this application is to serve as a **"Comprehensive Economic Analyzer for the Ammonia Value Chain."** Beyond simple cost calculation, it aims to be a strategic decision-making tool that determines the optimal scale of renewable energy sources, electrolyzers, and synthesis plants required to meet a production target. Future versions will incorporate ammonia utilization scenarios (e.g., SOFC, hydrogen engines, co-firing).
+
+    #### **About the Creator: [HWAN-OH](https://github.com/HWAN-OH)**
+    The developer is focused on building digital systems that model and solve complex, real-world challenges. 
+    This project shares its philosophy with his core vision, the **[MirrorMind Identity Protocol](https://github.com/HWAN-OH/MirrorMind-Identity-Protocol)**, and acts as a tangible, specialized digital persona with deep expertise in energy economics.
+    """)
 
 if st.button("🚀 Run Analysis", use_container_width=True):
     # --- 1. Reverse Calculation ---
@@ -80,7 +87,14 @@ if st.button("🚀 Run Analysis", use_container_width=True):
     }
 
     with st.spinner(f'Analyzing economics for **{energy_strategy}** scenario...'):
-        capex_costs = calculator.calculate_capital_costs(base_config, target_ammonia_tonne, energy_strategy, ess_config, solar_wind_ratio / 100)
+        capex_costs = calculator.calculate_capital_costs(
+            base_config, 
+            target_ammonia_tonne, 
+            energy_strategy, 
+            ess_config, 
+            solar_wind_ratio / 100
+        )
+        
         opex_costs = calculator.calculate_annual_operating_costs(base_config, capex_costs, total_kwh_needed, energy_strategy, grid_config)
         lcoa_results = calculator.calculate_lcoa(base_config, capex_costs['total_capex'], opex_costs['total_annual_opex'], target_ammonia_tonne)
 
@@ -98,10 +112,13 @@ if st.button("🚀 Run Analysis", use_container_width=True):
 
     with tab1:
         st.subheader("LCOA Cost Components")
-        cost_df = pd.DataFrame.from_dict(
-            lcoa_results['breakdown'], orient='index', columns=['Cost ($/tonne)']
-        )
-        st.bar_chart(cost_df)
+        if 'breakdown' in lcoa_results and lcoa_results['breakdown']:
+            cost_df = pd.DataFrame.from_dict(
+                lcoa_results['breakdown'], orient='index', columns=['Cost ($/tonne)']
+            )
+            st.bar_chart(cost_df)
+        else:
+            st.warning("Could not generate cost breakdown.")
 
     with tab2:
         st.subheader("Calculated Infrastructure Specifications")
